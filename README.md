@@ -49,7 +49,7 @@ npx expo start
 ```
 
 3. Running on your device:
-   - Scan the QR code with Expo Go (Android) or the Camera app (iOS)
+   - Scan the QR code with Expo Go App (Android) or the Camera app (iOS) and make sure the phone device and your laptop/PC should be on the same netweok
    - Press 'a' to open in Android emulator
    - Press 'i' to open in iOS simulator
    - Press 'w' to open in web browser
@@ -76,19 +76,6 @@ The app uses the OMDB API. You'll need to:
 1. Get an API key from [OMDB API](http://www.omdbapi.com/)
 2. The API key is already configured in the app: "6cb1c495"
 
-## Building for Production
-
-To create a production build:
-
-1. Build for Android:
-```bash
-expo build:android
-```
-
-2. Build for iOS:
-```bash
-expo build:ios
-```
 
 ## Troubleshooting
 
@@ -111,17 +98,6 @@ npx expo start --clear
 npm start -- --clear
 ```
 
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgments
 
