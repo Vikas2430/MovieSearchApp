@@ -75,12 +75,13 @@ export default function HomeScreen() {
         
         if (pageNum === 1) {
           setMovies(data.Search || [])
-        } else {
-          // Filter out duplicates before adding new movies
-          const newMovies = data.Search.filter((newMovie: Movie) => 
-            !movies.some(movie => movie.imdbID === newMovie.imdbID)
-          )
-          setMovies(prevMovies => [...prevMovies, ...newMovies])
+        } else if (data.Search && data.Search.length > 0) {
+          setMovies(prevMovies => {
+            const newMovies = data.Search.filter((newMovie: Movie) => 
+              !prevMovies.some(movie => movie.imdbID === newMovie.imdbID)
+            )
+            return [...prevMovies, ...newMovies]
+          })
         }
       } else {
         setError(data.Error || "No movies found")
@@ -105,12 +106,12 @@ export default function HomeScreen() {
   }
 
   // Load more movies
-  const loadMoreMovies = () => {
+  const loadMoreMovies = async () => {
     if (isLoadingMore || loading || movies.length >= totalResults) return
   
     const nextPage = page + 1
     setPage(nextPage)
-    searchMovies(searchQuery, nextPage)
+    await searchMovies(searchQuery || "star wars", nextPage)
   }
 
   // Navigate to favorites screen
@@ -158,7 +159,7 @@ export default function HomeScreen() {
             disabled={isLoadingMore || loading}
           >
             <Text style={styles.loadMoreText}>
-              Load More ({remainingMovies} remaining)
+              Load More
             </Text>
           </TouchableOpacity>
         ) : null}
@@ -190,7 +191,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {loading && page === 1 ? (
+      {loading && movies.length === 0 ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#228be6" />
         </View>
@@ -217,20 +218,6 @@ export default function HomeScreen() {
               </View>
             ) : null
           }
-          removeClippedSubviews={false}
-          maxToRenderPerBatch={6}
-          windowSize={3}
-          initialNumToRender={6}
-          updateCellsBatchingPeriod={100}
-          getItemLayout={(data, index) => ({
-            length: 250,
-            offset: 250 * Math.floor(index / 3),
-            index,
-          })}
-          maintainVisibleContentPosition={{
-            minIndexForVisible: 0,
-            autoscrollToTopThreshold: 10,
-          }}
         />
       )}
     </SafeAreaView>
