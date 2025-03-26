@@ -42,6 +42,7 @@ You can start the development server using either of these commands:
 ```bash
 npm start
 ```
+Then scan the QR code with Expo Go app and make sure the phone device is connected to the same network which is connected to laptop/PC
 
 2. Using Expo CLI:
 ```bash
@@ -110,18 +111,6 @@ npx expo start --clear
 # or
 npm start -- --clear
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgments
 
