@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, memo } from "react"
 import {
   View,
   Text,
@@ -32,6 +32,28 @@ type RootStackParamList = {
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+// Memoized MovieItem component
+const MovieItem = memo(({ item, onPress }: { item: Movie; onPress: () => void }) => (
+  <TouchableOpacity
+    style={styles.movieItem}
+    onPress={onPress}
+  >
+    <Image
+      source={{
+        uri: item.Poster !== "N/A" ? item.Poster : "https://via.placeholder.com/150x225?text=No+Poster",
+      }}
+      style={styles.poster}
+      resizeMode="cover"
+    />
+    <View style={styles.movieInfo}>
+      <Text style={styles.title} numberOfLines={2}>
+        {item.Title}
+      </Text>
+      <Text style={styles.year}>{item.Year}</Text>
+    </View>
+  </TouchableOpacity>
+))
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -119,27 +141,28 @@ export default function HomeScreen() {
     navigation.navigate("Favorites")
   }
 
-  // Render movie item
-  const renderMovieItem = ({ item }: { item: Movie }) => (
-    <TouchableOpacity
-      style={styles.movieItem}
-      onPress={() => navigation.navigate("MovieDetail", { movieId: item.imdbID })}
-    >
-      <Image
-        source={{
-          uri: item.Poster !== "N/A" ? item.Poster : "https://via.placeholder.com/150x225?text=No+Poster",
-        }}
-        style={styles.poster}
-        resizeMode="cover"
-      />
-      <View style={styles.movieInfo}>
-        <Text style={styles.title} numberOfLines={2}>
-          {item.Title}
-        </Text>
-        <Text style={styles.year}>{item.Year}</Text>
-      </View>
-    </TouchableOpacity>
-  )
+  // Memoized navigation function
+  const navigateToMovieDetail = useCallback((movieId: string) => {
+    navigation.navigate("MovieDetail", { movieId })
+  }, [navigation])
+
+  // Memoized renderItem function
+  const renderMovieItem = useCallback(({ item }: { item: Movie }) => (
+    <MovieItem 
+      item={item} 
+      onPress={() => navigateToMovieDetail(item.imdbID)}
+    />
+  ), [navigateToMovieDetail])
+
+  // Memoized keyExtractor function
+  const keyExtractor = useCallback((item: Movie) => item.imdbID, [])
+
+  // Memoized getItemLayout function
+  const getItemLayout = useCallback((data: ArrayLike<Movie> | null | undefined, index: number) => ({
+    length: 250, // Approximate height of each item
+    offset: 250 * Math.floor(index / 3),
+    index,
+  }), [])
 
   // Render footer (loading indicator and load more button)
   const renderFooter = () => {
@@ -167,6 +190,13 @@ export default function HomeScreen() {
     );
   }
 
+  // Reset to home screen
+  const resetToHome = () => {
+    setSearchQuery("")
+    setPage(1)
+    searchMovies("star wars", 1)
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -186,9 +216,14 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.favButton} onPress={navigateToFavorites}>
-          <Ionicons name="heart" size={24} color="#ff6b6b" />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity style={styles.homeButton} onPress={resetToHome}>
+            <Ionicons name="home" size={24} color="#228be6" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.favButton} onPress={navigateToFavorites}>
+            <Ionicons name="heart" size={24} color="#ff6b6b" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading && movies.length === 0 ? (
@@ -207,7 +242,7 @@ export default function HomeScreen() {
         <FlatList
           data={movies}
           renderItem={renderMovieItem}
-          keyExtractor={(item) => item.imdbID}
+          keyExtractor={keyExtractor}
           numColumns={3}
           contentContainerStyle={styles.movieList}
           ListFooterComponent={renderFooter}
@@ -218,6 +253,16 @@ export default function HomeScreen() {
               </View>
             ) : null
           }
+          getItemLayout={getItemLayout}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={6}
+          windowSize={3}
+          initialNumToRender={6}
+          updateCellsBatchingPeriod={100}
+          maintainVisibleContentPosition={{
+            minIndexForVisible: 0,
+            autoscrollToTopThreshold: 10,
+          }}
         />
       )}
     </SafeAreaView>
@@ -256,6 +301,18 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     backgroundColor: "#228be6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  homeButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#e7f5ff",
     justifyContent: "center",
     alignItems: "center",
   },
