@@ -40,25 +40,29 @@ export default function HomeScreen() {
   const [error, setError] = useState("")
   const [page, setPage] = useState(1)
   const [totalResults, setTotalResults] = useState(0)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const navigation = useNavigation<NavigationProp>()
 
   // Load initial popular movies when component mounts
   useEffect(() => {
-    searchMovies("star wars", 1, false)
+    searchMovies("star wars", 1)
   }, [])
 
   // Function to search movies
-  const searchMovies = async (query: string, pageNum = 1, append = false) => {
+  const searchMovies = async (query: string, pageNum: number) => {
     if (!query.trim()) {
       setMovies([])
       return
     }
 
-    setLoading(true)
+    if (pageNum === 1) {
+      setLoading(true)
+    } else {
+      setIsLoadingMore(true)
+    }
     setError("")
 
     try {
-      // Replace with your actual API key
       const apiKey = "6cb1c495"
       const response = await fetch(
         `https://www.omdbapi.com/?s=${encodeURIComponent(query)}&page=${pageNum}&apikey=${apiKey}`,
@@ -66,37 +70,47 @@ export default function HomeScreen() {
       const data = await response.json()
 
       if (data.Response === "True") {
-        setTotalResults(Number.parseInt(data.totalResults, 10))
-        if (append) {
-          setMovies((prevMovies) => [...prevMovies, ...data.Search])
+        const totalResultsCount = parseInt(data.totalResults, 10)
+        setTotalResults(totalResultsCount)
+        
+        if (pageNum === 1) {
+          setMovies(data.Search || [])
         } else {
-          setMovies(data.Search)
+          // Filter out duplicates before adding new movies
+          const newMovies = data.Search.filter((newMovie: Movie) => 
+            !movies.some(movie => movie.imdbID === newMovie.imdbID)
+          )
+          setMovies(prevMovies => [...prevMovies, ...newMovies])
         }
       } else {
         setError(data.Error || "No movies found")
-        if (!append) setMovies([])
+        if (pageNum === 1) setMovies([])
       }
     } catch (err) {
       setError("Failed to fetch movies. Please try again.")
-      if (!append) setMovies([])
+      if (pageNum === 1) setMovies([])
     } finally {
-      setLoading(false)
+      if (pageNum === 1) {
+        setLoading(false)
+      } else {
+        setIsLoadingMore(false)
+      }
     }
   }
 
   // Handle search submission
   const handleSearch = () => {
     setPage(1)
-    searchMovies(searchQuery)
+    searchMovies(searchQuery, 1)
   }
 
   // Load more movies
   const loadMoreMovies = () => {
-    if (loading || movies.length >= totalResults) return
-
+    if (isLoadingMore || loading || movies.length >= totalResults) return
+  
     const nextPage = page + 1
     setPage(nextPage)
-    searchMovies(searchQuery, nextPage, true)
+    searchMovies(searchQuery, nextPage)
   }
 
   // Navigate to favorites screen
@@ -126,14 +140,30 @@ export default function HomeScreen() {
     </TouchableOpacity>
   )
 
-  // Render footer (loading indicator)
+  // Render footer (loading indicator and load more button)
   const renderFooter = () => {
-    if (!loading || movies.length === 0) return null
+    if (movies.length === 0) return null;
+
+    const remainingMovies = totalResults - movies.length;
+    const shouldShowLoadMore = remainingMovies > 0 && !isLoadingMore && !loading;
+
     return (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator size="large" color="#0000ff" />
+      <View style={styles.footerContainer}>
+        {isLoadingMore ? (
+          <ActivityIndicator size="large" color="#228be6" />
+        ) : shouldShowLoadMore ? (
+          <TouchableOpacity 
+            style={styles.loadMoreButton} 
+            onPress={loadMoreMovies}
+            disabled={isLoadingMore || loading}
+          >
+            <Text style={styles.loadMoreText}>
+              Load More ({remainingMovies} remaining)
+            </Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
-    )
+    );
   }
 
   return (
@@ -160,11 +190,15 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {error ? (
+      {loading && page === 1 ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#228be6" />
+        </View>
+      ) : error ? (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
-      ) : movies.length === 0 && !loading ? (
+      ) : movies.length === 0 ? (
         <View style={styles.centerContainer}>
           <Text style={styles.placeholderText}>Search for movies to see results</Text>
         </View>
@@ -175,8 +209,6 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.imdbID}
           numColumns={3}
           contentContainerStyle={styles.movieList}
-          onEndReached={loadMoreMovies}
-          onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
           ListHeaderComponent={
             !searchQuery ? (
@@ -185,6 +217,20 @@ export default function HomeScreen() {
               </View>
             ) : null
           }
+          removeClippedSubviews={false}
+          maxToRenderPerBatch={6}
+          windowSize={3}
+          initialNumToRender={6}
+          updateCellsBatchingPeriod={100}
+          getItemLayout={(data, index) => ({
+            length: 250,
+            offset: 250 * Math.floor(index / 3),
+            index,
+          })}
+          maintainVisibleContentPosition={{
+            minIndexForVisible: 0,
+            autoscrollToTopThreshold: 10,
+          }}
         />
       )}
     </SafeAreaView>
@@ -257,8 +303,8 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   movieItem: {
-    width: "30%", // Approximately 1/3 of the screen width
-    margin: "1.5%", // Equal margins on all sides
+    width: "30%",
+    margin: "1.5%",
     backgroundColor: "white",
     borderRadius: 12,
     overflow: "hidden",
@@ -287,9 +333,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#6c757d",
   },
-  footerLoader: {
+  footerContainer: {
     paddingVertical: 20,
     alignItems: "center",
+  },
+  loadMoreButton: {
+    backgroundColor: "#228be6",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  loadMoreText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
   sectionHeader: {
     padding: 16,
@@ -301,4 +363,3 @@ const styles = StyleSheet.create({
     color: "#212529",
   },
 })
-
